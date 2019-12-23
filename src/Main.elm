@@ -13,6 +13,7 @@ import Html.Events exposing (onClick)
 type alias Model =
     { navbarApplied : Bool
     , headerSections : HeaderSections
+    , editPaneOpen : Bool
     }
 
 
@@ -27,6 +28,19 @@ type Collapsable
     | Visible
 
 
+type Content
+    = Nav NavType
+    | Button ButtonType
+
+
+type NavType
+    = ResponseiveHeader
+
+
+type ButtonType
+    = SimpleButton
+
+
 initialModel : Model
 initialModel =
     { navbarApplied = False
@@ -34,12 +48,13 @@ initialModel =
         { navbarHeader = Collapsed
         , buttonsHeader = Collapsed
         }
+    , editPaneOpen = False
     }
 
 
 type ItemType
-    = Navbar
-    | Button
+    = NavbarHeader
+    | ButtonHeader
 
 
 
@@ -61,12 +76,12 @@ update msg model =
         ToggleNav ->
             { model | navbarApplied = not model.navbarApplied }
 
-        ToggleVisibility Navbar ->
+        ToggleVisibility NavbarHeader ->
             { model
                 | headerSections = toggleHeaderSection model model.headerSections.navbarHeader setNavbarHeader
             }
 
-        ToggleVisibility Button ->
+        ToggleVisibility ButtonHeader ->
             { model
                 | headerSections =
                     toggleHeaderSection model model.headerSections.buttonsHeader setButtonsHeader
@@ -109,8 +124,8 @@ view : Model -> Html Msg
 view model =
     div [ class "font-sans flex" ]
         [ div [ class "flex flex-col w-1/4 bg-gray-400" ]
-            [ selectorList "Navbars" model.headerSections.navbarHeader Navbar
-            , selectorList "Buttons" model.headerSections.buttonsHeader Button
+            [ selectorList "Navbars" model.headerSections.navbarHeader NavbarHeader
+            , selectorList "Buttons" model.headerSections.buttonsHeader ButtonHeader
             ]
         , div [ class "w-3/4 bg-gray-300" ] [ applyElements model ]
         ]
