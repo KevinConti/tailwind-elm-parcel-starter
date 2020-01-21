@@ -11,16 +11,16 @@ import Html.Events exposing (onClick)
 
 
 type alias Model =
-    {}
+    {flag: String}
 
 
-initialModel : Model
-initialModel =
-    {}
+initialModel : String -> Model
+initialModel jsInput =
+    {flag = jsInput }
 
-init : flags -> (Model, Cmd Msg)
-init _ =
-    (initialModel, Cmd.none)
+init : String -> (Model, Cmd Msg)
+init jsInput =
+    (initialModel jsInput, Cmd.none)
 
 -- MSG
 
@@ -47,15 +47,15 @@ update msg model =
 view : Model -> Html Msg
 view model =
     div []
-        [ header
+        [ header model.flag
         ]
 
 
-header : Html Msg
-header =
+header : String -> Html Msg
+header title =
     nav [ class "flex items-center justify-between flex-wrap bg-teal-500 p-6" ]
         [ div [ class "flex items-center flex-shrink-0 text-white mr-6" ]
-            [ span [ class "font-semibold text-xl tracking-tight" ] [ text "IShipEveryDay" ]
+            [ span [ class "font-semibold text-xl tracking-tight" ] [ text title ]
             ]
         , div [ class "block lg:hidden" ]
             [ button [ class "flex items-center px-3 py-2 border rounded text-teal-200 border-teal-400 hover:text-white hover:border-white" ] [ text "Menu" ]
@@ -76,7 +76,7 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.none
 
-main : Program () Model Msg
+main : Program String Model Msg
 main =
     Browser.element
         { init = init
