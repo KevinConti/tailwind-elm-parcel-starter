@@ -18,7 +18,9 @@ initialModel : Model
 initialModel =
     {}
 
-
+init : flags -> (Model, Cmd Msg)
+init _ =
+    (initialModel, Cmd.none)
 
 -- MSG
 
@@ -31,11 +33,11 @@ type Msg
 -- UPDATE
 
 
-update : Msg -> Model -> Model
+update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     case msg of
         Nothing ->
-            model
+            (model, Cmd.none)
 
 
 
@@ -70,11 +72,15 @@ header =
             ]
         ]
 
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.none
 
 main : Program () Model Msg
 main =
-    Browser.sandbox
-        { init = initialModel
+    Browser.element
+        { init = init
         , view = view
         , update = update
+        , subscriptions = subscriptions
         }

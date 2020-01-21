@@ -4,3 +4,5 @@ elm-stuff
 repl-temp-*
 .cache
 dist
+node_modules/*
+dist/
