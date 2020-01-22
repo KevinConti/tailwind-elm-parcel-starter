@@ -1,9 +1,10 @@
 module Main exposing (main)
 
 import Browser
-import Html exposing (Html, a, button, div, h2, nav, span, text)
+import Html exposing (Html, a, button, div, h2, h3, nav, pre, span, text)
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
+import Http
 
 
 
@@ -11,33 +12,64 @@ import Html.Events exposing (onClick)
 
 
 type alias Model =
-    {flag: String}
+    { flag : String
+    , httpStatus : HttpStatus
+    }
+
+
+type HttpStatus
+    = Failure Http.Error
+    | Loading
+    | Success String
 
 
 initialModel : String -> Model
 initialModel jsInput =
-    {flag = jsInput }
+    { flag = jsInput
+    , httpStatus = Loading
+    }
 
-init : String -> (Model, Cmd Msg)
+
+init : String -> ( Model, Cmd Msg )
 init jsInput =
-    (initialModel jsInput, Cmd.none)
+    ( initialModel jsInput
+    , Http.get
+        { url = "elm-lang.org/assets/public-opinion.txt"
+        , expect = Http.expectString GotText
+        }
+    )
+
+
 
 -- MSG
 
 
 type Msg
-    = Nothing
+    = GotText (Result Http.Error String)
 
 
 
 -- UPDATE
 
 
-update : Msg -> Model -> (Model, Cmd Msg)
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Nothing ->
-            (model, Cmd.none)
+        GotText result ->
+            case result of
+                Ok fullText ->
+                    ( { model
+                        | httpStatus = Success fullText
+                      }
+                    , Cmd.none
+                    )
+
+                Err error ->
+                    ( { model
+                        | httpStatus = Failure error
+                      }
+                    , Cmd.none
+                    )
 
 
 
@@ -48,6 +80,7 @@ view : Model -> Html Msg
 view model =
     div []
         [ header model.flag
+        , displayBook model.httpStatus
         ]
 
 
@@ -72,9 +105,27 @@ header title =
             ]
         ]
 
+
+displayBook : HttpStatus -> Html Msg
+displayBook httpStatus =
+    case httpStatus of
+        Failure error ->
+            div []
+                [ h2 [] [ text "I was unable to load the book" ]
+                , h3 [] [ text ("Error: " ++ Debug.toString error) ]
+                ]
+
+        Loading ->
+            text "Loading..."
+
+        Success fullText ->
+            pre [] [ text fullText ]
+
+
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.none
+
 
 main : Program String Model Msg
 main =
