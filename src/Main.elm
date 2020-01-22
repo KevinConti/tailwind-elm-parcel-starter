@@ -6,6 +6,7 @@ import Html.Attributes exposing (class, src)
 import Html.Events exposing (onClick)
 import Http
 import Json.Decode exposing (Decoder, field, string)
+import Json.Decode.Pipeline exposing (required)
 import Json.Encode as E
 
 
@@ -19,6 +20,7 @@ port cache : E.Value -> Cmd msg
 type alias Model =
     { flag : String -- Flag from javascript - becomes the title in the top-left of the navbar
     , httpStatus : HttpStatus -- Http get request for cat memes
+    , httpStatusTwo : HttpStatus -- Http get request that is parsed using json-pipeline-decoder
     }
 
 
@@ -32,13 +34,15 @@ initialModel : String -> Model
 initialModel jsInput =
     { flag = jsInput
     , httpStatus = Loading
+    , httpStatusTwo = Loading
     }
 
 
 init : String -> ( Model, Cmd Msg )
 init jsInput =
     ( initialModel jsInput
-    , getRandomCatGif
+    , Cmd.batch [getRandomCatGif
+    , getRandomDogGif]
     )
 
 
@@ -48,6 +52,7 @@ init jsInput =
 
 type Msg
     = GotGif (Result Http.Error String) -- Msg response from Cmd when the Http.get returns
+    | GotDogGif (Result Http.Error DogGif) -- Msg response from Cmd
 
 
 
@@ -73,6 +78,22 @@ update msg model =
                     , Cmd.none
                     )
 
+        GotDogGif result ->
+            case result of
+                Ok gif ->
+                    ( { model
+                    | httpStatusTwo = Success gif.data.image_url 
+                    }
+                     , Cmd.none
+                    )
+
+                Err error ->
+                    ( { model 
+                        | httpStatusTwo = Failure error 
+                        }
+                      , Cmd.none 
+                    )
+
 
 
 -- VIEW
@@ -83,6 +104,7 @@ view model =
     div []
         [ header model.flag
         , viewGif model.httpStatus
+        , viewGif model.httpStatusTwo
         ]
 
 
@@ -103,8 +125,7 @@ header title =
                 ]
             , div []
                 [ a [ class "inline-block text-sm px-4 py-2 leading-none border rounded text-white border-white hover:border-transparent hover:text-teal-500 hover:bg-white mt-4 lg:mt-0" ] [ text "Sign Up" ]
-                ]
-            ]
+                ] ]
         ]
 
 
@@ -113,7 +134,7 @@ viewGif httpStatus =
     case httpStatus of
         Failure error ->
             div []
-                [ h2 [] [ text "I was unable to load the book" ]
+                [ h2 [] [ text "I was unable to load the gif" ]
                 , h3 [] [ text ("Error: " ++ Debug.toString error) ]
                 ]
 
@@ -150,10 +171,46 @@ getRandomCatGif : Cmd Msg
 getRandomCatGif =
     Http.get
         { url = "https://api.giphy.com/v1/gifs/random?api_key=dc6zaTOxFJmzC&tag=cat"
-        , expect = Http.expectJson GotGif gifDecoder 
+        , expect = Http.expectJson GotGif gifDecoder
         }
 
+
+getRandomDogGif : Cmd Msg
+getRandomDogGif =
+    Http.get
+        { url = "https://api.giphy.com/v1/gifs/random?api_key=dc6zaTOxFJmzC&tag=dog"
+        , expect = Http.expectJson GotDogGif jsonPipelineDecoder }
+
+dogGifToString : DogGif -> String 
+dogGifToString gif =
+    gif.data.image_url
 
 gifDecoder : Decoder String
 gifDecoder =
     field "data" (field "image_url" string)
+
+
+
+-- json-decode-pipeline
+
+
+type alias Data =
+    { image_url : String
+    }
+
+
+type alias DogGif =
+    { data : Data
+    }
+
+
+jsonPipelineDecoder : Decoder DogGif
+jsonPipelineDecoder =
+    Json.Decode.succeed DogGif
+        |> required "data" dataDecoder
+
+
+dataDecoder : Decoder Data
+dataDecoder =
+    Json.Decode.succeed Data
+        |> required "image_url" string
