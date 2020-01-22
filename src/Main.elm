@@ -1,10 +1,15 @@
-module Main exposing (main)
+port module Main exposing (main)
 
 import Browser
-import Html exposing (Html, a, button, div, h2, h3, nav, pre, span, text)
-import Html.Attributes exposing (class)
+import Html exposing (Html, a, button, div, h2, h3, img, nav, pre, span, text)
+import Html.Attributes exposing (class, src)
 import Html.Events exposing (onClick)
 import Http
+import Json.Decode exposing (Decoder, field, string)
+import Json.Encode as E
+
+
+port cache : E.Value -> Cmd msg
 
 
 
@@ -12,8 +17,8 @@ import Http
 
 
 type alias Model =
-    { flag : String
-    , httpStatus : HttpStatus
+    { flag : String -- Flag from javascript - becomes the title in the top-left of the navbar
+    , httpStatus : HttpStatus -- Http get request for cat memes
     }
 
 
@@ -33,10 +38,7 @@ initialModel jsInput =
 init : String -> ( Model, Cmd Msg )
 init jsInput =
     ( initialModel jsInput
-    , Http.get
-        { url = "elm-lang.org/assets/public-opinion.txt"
-        , expect = Http.expectString GotText
-        }
+    , getRandomCatGif
     )
 
 
@@ -45,7 +47,7 @@ init jsInput =
 
 
 type Msg
-    = GotText (Result Http.Error String)
+    = GotGif (Result Http.Error String) -- Msg response from Cmd when the Http.get returns
 
 
 
@@ -55,11 +57,11 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        GotText result ->
+        GotGif result ->
             case result of
-                Ok fullText ->
+                Ok url ->
                     ( { model
-                        | httpStatus = Success fullText
+                        | httpStatus = Success url
                       }
                     , Cmd.none
                     )
@@ -80,7 +82,7 @@ view : Model -> Html Msg
 view model =
     div []
         [ header model.flag
-        , displayBook model.httpStatus
+        , viewGif model.httpStatus
         ]
 
 
@@ -106,8 +108,8 @@ header title =
         ]
 
 
-displayBook : HttpStatus -> Html Msg
-displayBook httpStatus =
+viewGif : HttpStatus -> Html Msg
+viewGif httpStatus =
     case httpStatus of
         Failure error ->
             div []
@@ -118,8 +120,11 @@ displayBook httpStatus =
         Loading ->
             text "Loading..."
 
-        Success fullText ->
-            pre [] [ text fullText ]
+        Success url ->
+            div [ class "h-48 w-48" ]
+                [ h3 [ class "text-gray-800" ] [ text "Http get request: " ]
+                , img [ src url ] []
+                ]
 
 
 subscriptions : Model -> Sub Msg
@@ -135,3 +140,20 @@ main =
         , update = update
         , subscriptions = subscriptions
         }
+
+
+
+-- HTTP
+
+
+getRandomCatGif : Cmd Msg
+getRandomCatGif =
+    Http.get
+        { url = "https://api.giphy.com/v1/gifs/random?api_key=dc6zaTOxFJmzC&tag=cat"
+        , expect = Http.expectJson GotGif gifDecoder 
+        }
+
+
+gifDecoder : Decoder String
+gifDecoder =
+    field "data" (field "image_url" string)
